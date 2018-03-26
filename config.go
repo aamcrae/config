@@ -23,11 +23,18 @@ func (c *Config) Merge(c1 Config) {
     }
 }
 
-func (c *Config) Get(k string) ([]string, bool) {
+func (c *Config) GetTokens(k string) ([]string, bool) {
     if v, ok := (*c)[k]; ok {
         return v.Tokens, true
     }
     return nil, false
+}
+
+func (c *Config) Get(k string) (Value, bool) {
+    if v, ok := (*c)[k]; ok {
+        return *v, true
+    }
+    return Value{}, false
 }
 
 func (c *Config) ParseFile(file string) error {
@@ -42,6 +49,17 @@ func (c *Config) GetN(strs []string) []*Value {
         }
     }
     return values
+}
+
+// Return strings not present in config.
+func (c *Config) Missing(strs []string) []string {
+    var missing []string
+    for _, s := range strs {
+        if _, ok := (*c)[s]; !ok {
+            missing = append(missing, s)
+        }
+    }
+    return missing
 }
 
 func ParseFiles(optional bool, files []string) (Config, error) {
@@ -94,12 +112,7 @@ func parse(source string, r *bufio.Reader, config Config) error {
         if len(tok) == 0 {
             continue
         }
-        v := new(Value)
-        v.Filename = source
-        v.Lineno = lineno
-        v.Line = l
-        v.Tokens = tok[1:]
-        config[tok[0]] = v
+        config[tok[0]] = &Value{source, lineno, l, tok[1:]}
     }
     if scanner.Err() != nil {
         return fmt.Errorf("%s: line %d: %v", source, lineno, scanner.Err())
