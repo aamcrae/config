@@ -7,14 +7,42 @@ import (
     "strings"
 )
 
-// ConfigValue
+// Value, one for each keyword.
 type Value struct {
     Filename string
     Lineno int
     Line string
     Tokens []string
 }
-type Config map[string]Value
+
+type Config map[string]*Value
+
+func (c *Config) Merge(c1 Config) {
+    for k, v := range c1 {
+        (*c)[k] = v
+    }
+}
+
+func (c *Config) Get(k string) ([]string, bool) {
+    if v, ok := (*c)[k]; ok {
+        return v.Tokens, true
+    }
+    return nil, false
+}
+
+func (c *Config) ParseFile(file string) error {
+    return parseOneFile(file, *c)
+}
+
+func (c *Config) GetN(strs []string) []*Value {
+    var values []*Value
+    for _, s := range strs {
+        if v, ok := (*c)[s]; ok {
+            values = append(values, v)
+        }
+    }
+    return values
+}
 
 func ParseFiles(optional bool, files []string) (Config, error) {
     config := make(Config)
@@ -66,7 +94,12 @@ func parse(source string, r *bufio.Reader, config Config) error {
         if len(tok) == 0 {
             continue
         }
-        config[tok[0]] = Value{source, lineno, l, tok[1:]}
+        v := new(Value)
+        v.Filename = source
+        v.Lineno = lineno
+        v.Line = l
+        v.Tokens = tok[1:]
+        config[tok[0]] = v
     }
     if scanner.Err() != nil {
         return fmt.Errorf("%s: line %d: %v", source, lineno, scanner.Err())

@@ -3,6 +3,7 @@ package config_test
 import (
     "testing"
 
+    "path/filepath"
     "github.com/aamcrae/config"
 )
 
@@ -53,5 +54,45 @@ key3=data1,data2,data3
     }
     if len(val.Tokens) != 3 {
         t.Fatalf("Wrong number of tokens for 'key3'")
+    }
+}
+
+func TestFile(t *testing.T) {
+    path := filepath.Join("testdata", "f1")
+    c, err := config.ParseFile(path)
+    if err != nil {
+        t.Fatalf("File read for f1 failed: %v", err)
+    }
+    if len(c) != 3 {
+        t.Fatalf("TestFile: wrong number of entries: %d", len(c))
+    }
+    val, ok := c["key1"]
+    if !ok {
+        t.Fatalf("TestFile: keyword 'key1' has not been found")
+    }
+    if len(val.Tokens) != 4 {
+        t.Fatalf("TestFile: Wrong number of tokens for 'key1'")
+    }
+}
+
+func TestMultiFile(t *testing.T) {
+    p1 := filepath.Join("testdata", "f1")
+    p2 := filepath.Join("testdata", "f2")
+    c, err := config.ParseFiles(true, []string{p1, p2})
+    if err != nil {
+        t.Fatalf("File read for f1/f2 failed: %v", err)
+    }
+    if len(c) != 5 {
+        t.Fatalf("TestFiles: wrong number of entries: %d", len(c))
+    }
+    val, ok := c["key3"]
+    if !ok {
+        t.Fatalf("TestFiles: keyword 'key3' has not been found")
+    }
+    if len(val.Tokens) != 1 {
+        t.Fatalf("TestFiles: Wrong number of tokens for 'key3'")
+    }
+    if val.Tokens[0] != "xyz" {
+        t.Fatalf("TestFiles: Incorrect value for 'key3'")
     }
 }
