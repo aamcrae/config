@@ -20,7 +20,7 @@ key3=data1,data2,data3
     if err != nil {
         t.Fatal(err)
     }
-    if len(c.Values) != 3 {
+    if len(c.Entries) != 3 {
         t.Fatalf("Wrong number of config entries")
     }
     val, ok := c.Get("keyword")
@@ -63,8 +63,8 @@ func TestFile(t *testing.T) {
     if err != nil {
         t.Fatalf("File read for f1 failed: %v", err)
     }
-    if len(c.Values) != 3 {
-        t.Fatalf("TestFile: wrong number of entries: %d", len(c.Values))
+    if len(c.Entries) != 3 {
+        t.Fatalf("TestFile: wrong number of entries: %d", len(c.Entries))
     }
     val, ok := c.Get("key1")
     if !ok {
@@ -82,8 +82,8 @@ func TestMultiFile(t *testing.T) {
     if err != nil {
         t.Fatalf("File read for f1/f2 failed: %v", err)
     }
-    if len(c.Values) != 5 {
-        t.Fatalf("TestFiles: wrong number of entries: %d", len(c.Values))
+    if len(c.Entries) != 5 {
+        t.Fatalf("TestFiles: wrong number of entries: %d", len(c.Entries))
     }
     val, ok := c.Get("key3")
     if !ok {
@@ -145,10 +145,10 @@ func TestMerge(t *testing.T) {
     }
     c.Merge(c1)
     // A bit tricky to compare, since the values are pointers.
-    if len(c.Values) != len(comp.Values) {
+    if len(c.Entries) != len(comp.Entries) {
         t.Fatalf("TestMerge: lengths are different: %v %v", c1, comp)
     }
-    for _, v := range c.Values {
+    for _, v := range c.Entries {
         if vc, ok := comp.Get(v.Keyword); !ok {
             t.Fatalf("TestMerge: %v missing", v.Keyword)
         } else if !reflect.DeepEqual(*v, *vc) {
