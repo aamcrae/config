@@ -20,10 +20,10 @@ key3=data1,data2,data3
     if err != nil {
         t.Fatal(err)
     }
-    if len(c) != 3 {
+    if len(c.Values) != 3 {
         t.Fatalf("Wrong number of config entries")
     }
-    val, ok := c["keyword"]
+    val, ok := c.Get("keyword")
     if !ok {
         t.Fatalf("keyword 'keyword' has not been found")
     }
@@ -36,7 +36,7 @@ key3=data1,data2,data3
     if val.Tokens[0] != "test" {
         t.Fatalf("Wrong token value for 'keyword'")
     }
-    val, ok = c["key2"]
+    val, ok = c.Get("key2")
     if !ok {
         t.Fatalf("keyword 'key2' has not been found")
     }
@@ -46,7 +46,7 @@ key3=data1,data2,data3
     if len(val.Tokens) != 0 {
         t.Fatalf("Wrong number of tokens for 'key2'")
     }
-    val, ok = c["key3"]
+    val, ok = c.Get("key3")
     if !ok {
         t.Fatalf("keyword 'key3' has not been found")
     }
@@ -63,10 +63,10 @@ func TestFile(t *testing.T) {
     if err != nil {
         t.Fatalf("File read for f1 failed: %v", err)
     }
-    if len(c) != 3 {
-        t.Fatalf("TestFile: wrong number of entries: %d", len(c))
+    if len(c.Values) != 3 {
+        t.Fatalf("TestFile: wrong number of entries: %d", len(c.Values))
     }
-    val, ok := c["key1"]
+    val, ok := c.Get("key1")
     if !ok {
         t.Fatalf("TestFile: keyword 'key1' has not been found")
     }
@@ -82,10 +82,10 @@ func TestMultiFile(t *testing.T) {
     if err != nil {
         t.Fatalf("File read for f1/f2 failed: %v", err)
     }
-    if len(c) != 5 {
-        t.Fatalf("TestFiles: wrong number of entries: %d", len(c))
+    if len(c.Values) != 5 {
+        t.Fatalf("TestFiles: wrong number of entries: %d", len(c.Values))
     }
-    val, ok := c["key3"]
+    val, ok := c.Get("key3")
     if !ok {
         t.Fatalf("TestFiles: keyword 'key3' has not been found")
     }
@@ -145,14 +145,14 @@ func TestMerge(t *testing.T) {
     }
     c.Merge(c1)
     // A bit tricky to compare, since the values are pointers.
-    if len(c) != len(comp) {
+    if len(c.Values) != len(comp.Values) {
         t.Fatalf("TestMerge: lengths are different: %v %v", c1, comp)
     }
-    for k, v := range c {
-        if vc, ok := comp[k]; !ok {
-            t.Fatalf("TestMerge: %v missing", k)
+    for _, v := range c.Values {
+        if vc, ok := comp.Get(v.Keyword); !ok {
+            t.Fatalf("TestMerge: %v missing", v.Keyword)
         } else if !reflect.DeepEqual(*v, *vc) {
-            t.Fatalf("TestMerge: %v values different: %v %v", k, *v, *vc)
+            t.Fatalf("TestMerge: %v values different: %v %v", v.Keyword, *v, *vc)
         }
     }
 }

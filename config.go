@@ -9,42 +9,47 @@ import (
 
 // Value, one for each keyword.
 type Value struct {
+    Keyword string
     Filename string
     Lineno int
     Line string
     Tokens []string
+    index int
 }
 
-type Config map[string]*Value
+type Config struct {
+    m map[string]*Value
+    Values []*Value
+}
 
-func (c *Config) Merge(c1 Config) {
-    for k, v := range c1 {
-        (*c)[k] = v
+func (c *Config) Merge(c1 *Config) {
+    for _, v := range c1.Values {
+        c.addValue(v)
     }
 }
 
 func (c *Config) GetTokens(k string) ([]string, bool) {
-    if v, ok := (*c)[k]; ok {
+    if v, ok := c.m[k]; ok {
         return v.Tokens, true
     }
     return nil, false
 }
 
-func (c *Config) Get(k string) (Value, bool) {
-    if v, ok := (*c)[k]; ok {
-        return *v, true
+func (c *Config) Get(k string) (*Value, bool) {
+    if v, ok := c.m[k]; ok {
+        return v, true
     }
-    return Value{}, false
+    return nil, false
 }
 
 func (c *Config) ParseFile(file string) error {
-    return parseOneFile(file, *c)
+    return c.parseOneFile(file)
 }
 
 func (c *Config) GetN(strs []string) []*Value {
     var values []*Value
     for _, s := range strs {
-        if v, ok := (*c)[s]; ok {
+        if v, ok := c.m[s]; ok {
             values = append(values, v)
         }
     }
@@ -55,17 +60,17 @@ func (c *Config) GetN(strs []string) []*Value {
 func (c *Config) Missing(strs []string) []string {
     var missing []string
     for _, s := range strs {
-        if _, ok := (*c)[s]; !ok {
+        if _, ok := c.m[s]; !ok {
             missing = append(missing, s)
         }
     }
     return missing
 }
 
-func ParseFiles(optional bool, files []string) (Config, error) {
-    config := make(Config)
+func ParseFiles(optional bool, files []string) (*Config, error) {
+    config := &Config{map[string]*Value{}, []*Value{}}
     for _, f := range files {
-        if err := parseOneFile(f, config); err != nil {
+        if err := config.parseOneFile(f); err != nil {
             if !optional {
                 return config, fmt.Errorf("%s: %v", f, err)
             }
@@ -74,23 +79,23 @@ func ParseFiles(optional bool, files []string) (Config, error) {
     return config, nil
 }
 
-func ParseFile(file string) (Config, error) {
-    config := make(Config)
-    return config, parseOneFile(file, config)
+func ParseFile(file string) (*Config, error) {
+    config := &Config{map[string]*Value{}, []*Value{}}
+    return config, config.parseOneFile(file)
 }
 
-func parseOneFile(file string, config Config) error {
+func (config *Config) parseOneFile(file string) error {
     f, err := os.Open(file)
     if err != nil {
         return err
     }
     defer f.Close()
-    return parse(file, bufio.NewReader(f), config)
+    return config.parse(file, bufio.NewReader(f))
 }
 
-func ParseString(s string) (Config, error) {
-    config := make(Config)
-    return config, parse("internal", bufio.NewReader(strings.NewReader(s)), config)
+func ParseString(s string) (*Config, error) {
+    config := &Config{map[string]*Value{}, []*Value{}}
+    return config, config.parse("internal", bufio.NewReader(strings.NewReader(s)))
 }
 
 // parse reads the input and places key/value pairs in Config.
@@ -99,7 +104,7 @@ func ParseString(s string) (Config, error) {
 //   keyword[ [ = ] tokens]
 // Tokens are delimited by space, comma, tabs or '='
 // Duplicate keywords are silently overwritten.
-func parse(source string, r *bufio.Reader, config Config) error {
+func (config *Config) parse(source string, r *bufio.Reader) error {
     lineno := 0
     scanner := bufio.NewScanner(r)
     for scanner.Scan() {
@@ -112,12 +117,26 @@ func parse(source string, r *bufio.Reader, config Config) error {
         if len(tok) == 0 {
             continue
         }
-        config[tok[0]] = &Value{source, lineno, l, tok[1:]}
+        config.addValue(&Value{tok[0], source, lineno, l, tok[1:], 0})
     }
     if scanner.Err() != nil {
         return fmt.Errorf("%s: line %d: %v", source, lineno, scanner.Err())
     }
     return nil
+}
+
+func (config *Config) addValue(v *Value) {
+    entry, ok := config.m[v.Keyword]
+    if ok {
+        // Entry already exists, overwrite the existing one.
+        v.index = entry.index
+        config.Values[v.index] = v
+    } else {
+        // New entry, add to the end of the list.
+        v.index = len(config.Values)
+        config.Values = append(config.Values, v)
+    }
+    config.m[v.Keyword] = v
 }
 
 func delimiters(r rune) bool {
