@@ -22,6 +22,15 @@ type Config struct {
     Entries []*Entry
 }
 
+var delimiters := map[rune]struct{}{ '=':struct{}{}, ',':struct{}{} }
+
+func SetDelimiters(d string) {
+    delimiters = map[rune]struct{}{}
+    for _, r := range d {
+        delimiters[r] = struct{}{}
+    }
+}
+
 func (c *Config) Merge(c1 *Config) {
     for _, v := range c1.Entries {
         c.addEntry(v)
@@ -113,7 +122,7 @@ func (config *Config) parse(source string, r *bufio.Reader) error {
         if len(l) == 0 || l[0:1] == "#" {
             continue
         }
-        tok := strings.FieldsFunc(l, delimiters)
+        tok := strings.FieldsFunc(l, checkDelimiter)
         if len(tok) == 0 {
             continue
         }
@@ -139,6 +148,7 @@ func (config *Config) addEntry(v *Entry) {
     config.m[v.Keyword] = v
 }
 
-func delimiters(r rune) bool {
-    return r == ' ' || r == '=' || r == '\t' || r == ','
+func checkDelimiter(r rune) bool {
+    _, found := delimiters[r]
+    return found
 }
