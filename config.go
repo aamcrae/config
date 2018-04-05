@@ -14,11 +14,10 @@ type Entry struct {
     Lineno int
     Line string
     Tokens []string
-    index int
 }
 
 type Config struct {
-    m map[string]*Entry
+    m map[string][]*Entry
     Entries []*Entry
 }
 
@@ -37,32 +36,15 @@ func (c *Config) Merge(c1 *Config) {
     }
 }
 
-func (c *Config) GetTokens(k string) ([]string, bool) {
+func (c *Config) Get(k string) []*Entry {
     if v, ok := c.m[k]; ok {
-        return v.Tokens, true
+        return v
     }
-    return nil, false
-}
-
-func (c *Config) Get(k string) (*Entry, bool) {
-    if v, ok := c.m[k]; ok {
-        return v, true
-    }
-    return nil, false
+    return []*Entry{}
 }
 
 func (c *Config) ParseFile(file string) error {
     return c.parseOneFile(file)
-}
-
-func (c *Config) GetN(strs []string) []*Entry {
-    var entries []*Entry
-    for _, s := range strs {
-        if v, ok := c.m[s]; ok {
-            entries = append(entries, v)
-        }
-    }
-    return entries
 }
 
 // Return strings not present in config.
@@ -77,7 +59,7 @@ func (c *Config) Missing(strs []string) []string {
 }
 
 func ParseFiles(optional bool, files []string) (*Config, error) {
-    config := &Config{map[string]*Entry{}, []*Entry{}}
+    config := &Config{map[string][]*Entry{}, []*Entry{}}
     for _, f := range files {
         if err := config.parseOneFile(f); err != nil {
             if !optional {
@@ -89,7 +71,7 @@ func ParseFiles(optional bool, files []string) (*Config, error) {
 }
 
 func ParseFile(file string) (*Config, error) {
-    config := &Config{map[string]*Entry{}, []*Entry{}}
+    config := &Config{map[string][]*Entry{}, []*Entry{}}
     return config, config.parseOneFile(file)
 }
 
@@ -103,7 +85,7 @@ func (config *Config) parseOneFile(file string) error {
 }
 
 func ParseString(s string) (*Config, error) {
-    config := &Config{map[string]*Entry{}, []*Entry{}}
+    config := &Config{map[string][]*Entry{}, []*Entry{}}
     return config, config.parse("internal", bufio.NewReader(strings.NewReader(s)))
 }
 
@@ -126,7 +108,7 @@ func (config *Config) parse(source string, r *bufio.Reader) error {
         if len(tok) == 0 {
             continue
         }
-        config.addEntry(&Entry{tok[0], source, lineno, l, tok[1:], 0})
+        config.addEntry(&Entry{tok[0], source, lineno, l, tok[1:]})
     }
     if scanner.Err() != nil {
         return fmt.Errorf("%s: line %d: %v", source, lineno, scanner.Err())
@@ -135,17 +117,12 @@ func (config *Config) parse(source string, r *bufio.Reader) error {
 }
 
 func (config *Config) addEntry(v *Entry) {
+    config.Entries = append(config.Entries, v)
     entry, ok := config.m[v.Keyword]
-    if ok {
-        // Entry already exists, overwrite the existing one.
-        v.index = entry.index
-        config.Entries[v.index] = v
-    } else {
-        // New entry, add to the end of the list.
-        v.index = len(config.Entries)
-        config.Entries = append(config.Entries, v)
+    if !ok {
+        entry = []*Entry{}
     }
-    config.m[v.Keyword] = v
+    config.m[v.Keyword] = append(entry, v)
 }
 
 func checkDelimiter(r rune) bool {
