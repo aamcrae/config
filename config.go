@@ -22,7 +22,7 @@ type Config struct {
     Entries []*Entry
 }
 
-var delimiters := map[rune]struct{}{ '=':struct{}{}, ',':struct{}{} }
+var delimiters map[rune]struct{} = map[rune]struct{}{ '=':struct{}{}, ',':struct{}{} }
 
 func SetDelimiters(d string) {
     delimiters = map[rune]struct{}{}
