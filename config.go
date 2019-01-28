@@ -43,6 +43,19 @@ func (c *Config) Get(k string) []*Entry {
     return []*Entry{}
 }
 
+func (c *Config) GetArg(k string) (string, error) {
+    if v, ok := c.m[k]; ok {
+        if len(v) != 1 {
+            return "", fmt.Errorf("Illegal config for '%s'", k)
+        }
+        if len(v[0].Tokens) != 1 {
+            return "", fmt.Errorf("Illegal arguments for '%s'", k)
+        }
+        return v[0].Tokens[0], nil
+    }
+    return "", fmt.Errorf("Missing keyword: %s", k)
+}
+
 func (c *Config) ParseFile(file string) error {
     return c.parseOneFile(file)
 }
