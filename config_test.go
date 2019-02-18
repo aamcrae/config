@@ -20,7 +20,7 @@ key3=data1,data2,data3
     if err != nil {
         t.Fatal(err)
     }
-    if len(c.GetEntries(config.Global)) != 3 {
+    if len(c.GetSection(config.Global).GetEntries()) != 3 {
         t.Fatalf("Wrong number of config entries")
     }
     val := c.Get("keyword")
@@ -63,9 +63,13 @@ func TestFile(t *testing.T) {
     if err != nil {
         t.Fatalf("File read for f1 failed: %v", err)
     }
-	l := len(c.GetEntries(config.Global))
+	l := len(c.GetSection(config.Global).GetEntries())
     if l != 3 {
         t.Fatalf("TestFile: wrong number of entries: %d", l)
+    }
+	l = len(c.GetSection("section1").GetEntries())
+    if l != 2 {
+        t.Fatalf("TestFile: wrong number of entries for 'section1': %d", l)
     }
     val := c.Get("key1")
     if len(val) != 1 {
@@ -80,10 +84,20 @@ func TestFile(t *testing.T) {
 			t.Fatalf("TestFile: Wrong token %d for 'key1', expected %s, got %s", i, v, val[0].Tokens[i])
 		}
 	}
-	e := c.GetEntries("section1")
-    if len(e) != 2 {
-        t.Fatalf("TestFile: wrong number of entries for 'section1': %d, %v", len(e), e)
+	s1 := c.GetSection("section1")
+    val = s1.Get("key1")
+    if len(val) != 1 {
+        t.Fatalf("wrong number of entries for 'section1' 'key1'")
     }
+	exp1 := [...]string{"x", "y", "z"}
+    if len(val[0].Tokens) != len(exp1) {
+        t.Fatalf("TestFile: Wrong number of tokens for 'section1' 'key1'")
+    }
+	for i, v := range exp1 {
+		if val[0].Tokens[i] != v {
+			t.Fatalf("TestFile: Wrong token %d for 'section1' 'key1', expected %s, got %s", i, v, val[0].Tokens[i])
+		}
+	}
 }
 
 func TestMultiFile(t *testing.T) {
@@ -93,7 +107,7 @@ func TestMultiFile(t *testing.T) {
     if err != nil {
         t.Fatalf("File read for f1/f2 failed: %v", err)
     }
-	l := len(c.GetEntries(config.Global))
+	l := len(c.GetSection(config.Global).GetEntries())
     if l != 6 {
         t.Fatalf("TestFiles: wrong number of entries: %d", l)
     }
@@ -153,8 +167,8 @@ func TestMerge(t *testing.T) {
     }
     c.Merge(c1)
     // A bit tricky to compare, since the values are pointers.
-	l := len(c.GetEntries(config.Global))
-    if l != len(comp.GetEntries(config.Global)) {
+	l := len(c.GetSection(config.Global).GetEntries())
+    if l != len(comp.GetSection(config.Global).GetEntries()) {
         t.Fatalf("TestMerge: lengths are different: %v %v", c1, comp)
     }
 }

@@ -16,13 +16,15 @@ type Entry struct {
     Tokens []string
 }
 
-type section struct {
+// The entries associated with a single section.
+// The default section is named 'global'.
+type Section struct {
     m map[string][]*Entry
     entries []*Entry
 }
 
 type Config struct {
-	sections map[string]*section
+	sections map[string]*Section
 }
 
 const Global = "global"
@@ -38,7 +40,7 @@ func SetDelimiters(d string) {
 
 func (c *Config) Merge(c1 *Config) {
     for s, v := range c1.sections {
-		sect := c.getSection(s)
+		sect := c.GetSection(s)
 		for _, e := range v.entries {
 			sect.addEntry(e)
 		}
@@ -46,28 +48,25 @@ func (c *Config) Merge(c1 *Config) {
 }
 
 func (c *Config) Get(k string) []*Entry {
-    if v, ok := c.sections[Global].m[k]; ok {
-        return v
-    }
-    return []*Entry{}
-}
-
-func (c *Config) GetEntries(s string) ([]*Entry) {
-	return c.getSection(s).entries
+	return c.GetSection(Global).Get(k)
 }
 
 func (c *Config) GetArg(k string) (string, error) {
-    if v, ok := c.sections[Global].m[k]; ok {
-        if len(v) != 1 {
-            return "", fmt.Errorf("Illegal config for '%s'", k)
-        }
-        if len(v[0].Tokens) != 1 {
-            return "", fmt.Errorf("Illegal arguments for '%s'", k)
-        }
-        return v[0].Tokens[0], nil
-    }
-    return "", fmt.Errorf("Missing keyword: %s", k)
+	return c.GetSection(Global).GetArg(k)
 }
+
+func (config *Config) GetSection(name string) *Section {
+	if name == "" {
+		name = Global
+	}
+	s, ok := config.sections[name]
+	if !ok {
+		s = &Section{map[string][]*Entry{}, []*Entry{}}
+		config.sections[name] = s
+	}
+	return s
+}
+
 
 func (c *Config) ParseFile(file string) error {
     return c.parseOneFile(file)
@@ -82,6 +81,30 @@ func (c *Config) Missing(strs []string) []string {
         }
     }
     return missing
+}
+
+func (s *Section) Get(k string) []*Entry {
+    if v, ok := s.m[k]; ok {
+        return v
+    }
+    return []*Entry{}
+}
+
+func (s *Section) GetArg(k string) (string, error) {
+    if v, ok := s.m[k]; ok {
+        if len(v) != 1 {
+            return "", fmt.Errorf("Illegal config for '%s'", k)
+        }
+        if len(v[0].Tokens) != 1 {
+            return "", fmt.Errorf("Illegal arguments for '%s'", k)
+        }
+        return v[0].Tokens[0], nil
+    }
+    return "", fmt.Errorf("Missing keyword: %s", k)
+}
+
+func (s *Section) GetEntries() []*Entry {
+	return s.entries
 }
 
 func ParseFiles(optional bool, files []string) (*Config, error) {
@@ -118,8 +141,8 @@ func ParseString(s string) (*Config, error) {
 // newConfig creates a new Config structure.
 func newConfig() *Config {
 	c := new(Config)
-	c.sections = make(map[string]*section)
-	c.getSection(Global)
+	c.sections = make(map[string]*Section)
+	c.GetSection(Global)
 	return c
 }
 
@@ -144,7 +167,7 @@ func (config *Config) parse(source string, r *bufio.Reader) error {
 		ln := len(l)
 		// Check for new section.
 		if ln > 2 && l[0] == '[' && l[ln-1] == ']' {
-			sect = config.getSection(l[1:ln-1])
+			sect = config.GetSection(l[1:ln-1])
 			continue
 		}
         tok := strings.FieldsFunc(l, checkDelimiter)
@@ -159,19 +182,7 @@ func (config *Config) parse(source string, r *bufio.Reader) error {
     return nil
 }
 
-func (config *Config) getSection(name string) *section {
-	if len(name) == 0 {
-		name = Global
-	}
-	s, ok := config.sections[name]
-	if !ok {
-		s = &section{map[string][]*Entry{}, []*Entry{}}
-		config.sections[name] = s
-	}
-	return s
-}
-
-func (sect *section) addEntry(v *Entry) {
+func (sect *Section) addEntry(v *Entry) {
     sect.entries = append(sect.entries, v)
     entry, ok := sect.m[v.Keyword]
     if !ok {
