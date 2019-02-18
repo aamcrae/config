@@ -16,10 +16,16 @@ type Entry struct {
     Tokens []string
 }
 
-type Config struct {
+type section struct {
     m map[string][]*Entry
-    Entries []*Entry
+    entries []*Entry
 }
+
+type Config struct {
+	sections map[string]*section
+}
+
+const Global = "global"
 
 var delimiters map[rune]struct{} = map[rune]struct{}{ '=':struct{}{}, ',':struct{}{} }
 
@@ -31,20 +37,27 @@ func SetDelimiters(d string) {
 }
 
 func (c *Config) Merge(c1 *Config) {
-    for _, v := range c1.Entries {
-        c.addEntry(v)
+    for s, v := range c1.sections {
+		sect := c.getSection(s)
+		for _, e := range v.entries {
+			sect.addEntry(e)
+		}
     }
 }
 
 func (c *Config) Get(k string) []*Entry {
-    if v, ok := c.m[k]; ok {
+    if v, ok := c.sections[Global].m[k]; ok {
         return v
     }
     return []*Entry{}
 }
 
+func (c *Config) GetEntries(s string) ([]*Entry) {
+	return c.getSection(s).entries
+}
+
 func (c *Config) GetArg(k string) (string, error) {
-    if v, ok := c.m[k]; ok {
+    if v, ok := c.sections[Global].m[k]; ok {
         if len(v) != 1 {
             return "", fmt.Errorf("Illegal config for '%s'", k)
         }
@@ -64,7 +77,7 @@ func (c *Config) ParseFile(file string) error {
 func (c *Config) Missing(strs []string) []string {
     var missing []string
     for _, s := range strs {
-        if _, ok := c.m[s]; !ok {
+        if _, ok := c.sections[Global].m[s]; !ok {
             missing = append(missing, s)
         }
     }
@@ -72,7 +85,7 @@ func (c *Config) Missing(strs []string) []string {
 }
 
 func ParseFiles(optional bool, files []string) (*Config, error) {
-    config := &Config{map[string][]*Entry{}, []*Entry{}}
+	config := newConfig()
     for _, f := range files {
         if err := config.parseOneFile(f); err != nil {
             if !optional {
@@ -84,7 +97,7 @@ func ParseFiles(optional bool, files []string) (*Config, error) {
 }
 
 func ParseFile(file string) (*Config, error) {
-    config := &Config{map[string][]*Entry{}, []*Entry{}}
+	config := newConfig()
     return config, config.parseOneFile(file)
 }
 
@@ -98,17 +111,28 @@ func (config *Config) parseOneFile(file string) error {
 }
 
 func ParseString(s string) (*Config, error) {
-    config := &Config{map[string][]*Entry{}, []*Entry{}}
+	config := newConfig()
     return config, config.parse("internal", bufio.NewReader(strings.NewReader(s)))
+}
+
+// newConfig creates a new Config structure.
+func newConfig() *Config {
+	c := new(Config)
+	c.sections = make(map[string]*section)
+	c.getSection(Global)
+	return c
 }
 
 // parse reads the input and places key/value pairs in Config.
 // Comments are marked as '#' at the start of the line.
+// Separate sections are marked as:
+//  [section-name]
 // The lines are expected in the format:
 //   keyword[ [ = ] tokens]
 // Tokens are delimited by space, comma, tabs or '='
 // Duplicate keywords are silently overwritten.
 func (config *Config) parse(source string, r *bufio.Reader) error {
+	sect := config.sections[Global]
     lineno := 0
     scanner := bufio.NewScanner(r)
     for scanner.Scan() {
@@ -117,11 +141,17 @@ func (config *Config) parse(source string, r *bufio.Reader) error {
         if len(l) == 0 || l[0:1] == "#" {
             continue
         }
+		ln := len(l)
+		// Check for new section.
+		if ln > 2 && l[0] == '[' && l[ln-1] == ']' {
+			sect = config.getSection(l[1:ln-1])
+			continue
+		}
         tok := strings.FieldsFunc(l, checkDelimiter)
         if len(tok) == 0 {
             continue
         }
-        config.addEntry(&Entry{tok[0], source, lineno, l, tok[1:]})
+        sect.addEntry(&Entry{tok[0], source, lineno, l, tok[1:]})
     }
     if scanner.Err() != nil {
         return fmt.Errorf("%s: line %d: %v", source, lineno, scanner.Err())
@@ -129,13 +159,25 @@ func (config *Config) parse(source string, r *bufio.Reader) error {
     return nil
 }
 
-func (config *Config) addEntry(v *Entry) {
-    config.Entries = append(config.Entries, v)
-    entry, ok := config.m[v.Keyword]
+func (config *Config) getSection(name string) *section {
+	if len(name) == 0 {
+		name = Global
+	}
+	s, ok := config.sections[name]
+	if !ok {
+		s = &section{map[string][]*Entry{}, []*Entry{}}
+		config.sections[name] = s
+	}
+	return s
+}
+
+func (sect *section) addEntry(v *Entry) {
+    sect.entries = append(sect.entries, v)
+    entry, ok := sect.m[v.Keyword]
     if !ok {
         entry = []*Entry{}
     }
-    config.m[v.Keyword] = append(entry, v)
+    sect.m[v.Keyword] = append(entry, v)
 }
 
 func checkDelimiter(r rune) bool {

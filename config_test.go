@@ -20,7 +20,7 @@ key3=data1,data2,data3
     if err != nil {
         t.Fatal(err)
     }
-    if len(c.Entries) != 3 {
+    if len(c.GetEntries(config.Global)) != 3 {
         t.Fatalf("Wrong number of config entries")
     }
     val := c.Get("keyword")
@@ -63,15 +63,26 @@ func TestFile(t *testing.T) {
     if err != nil {
         t.Fatalf("File read for f1 failed: %v", err)
     }
-    if len(c.Entries) != 3 {
-        t.Fatalf("TestFile: wrong number of entries: %d", len(c.Entries))
+	l := len(c.GetEntries(config.Global))
+    if l != 3 {
+        t.Fatalf("TestFile: wrong number of entries: %d", l)
     }
     val := c.Get("key1")
     if len(val) != 1 {
         t.Fatalf("wrong number of entries for 'key1'")
     }
-    if len(val[0].Tokens) != 4 {
+	exp := [...]string{"1", "2", "3", "4"}
+    if len(val[0].Tokens) != len(exp) {
         t.Fatalf("TestFile: Wrong number of tokens for 'key1'")
+    }
+	for i, v := range exp {
+		if val[0].Tokens[i] != v {
+			t.Fatalf("TestFile: Wrong token %d for 'key1', expected %s, got %s", i, v, val[0].Tokens[i])
+		}
+	}
+	e := c.GetEntries("section1")
+    if len(e) != 2 {
+        t.Fatalf("TestFile: wrong number of entries for 'section1': %d, %v", len(e), e)
     }
 }
 
@@ -82,8 +93,9 @@ func TestMultiFile(t *testing.T) {
     if err != nil {
         t.Fatalf("File read for f1/f2 failed: %v", err)
     }
-    if len(c.Entries) != 6 {
-        t.Fatalf("TestFiles: wrong number of entries: %d", len(c.Entries))
+	l := len(c.GetEntries(config.Global))
+    if l != 6 {
+        t.Fatalf("TestFiles: wrong number of entries: %d", l)
     }
     val := c.Get("key3")
     if len(val) != 2 {
@@ -141,7 +153,8 @@ func TestMerge(t *testing.T) {
     }
     c.Merge(c1)
     // A bit tricky to compare, since the values are pointers.
-    if len(c.Entries) != len(comp.Entries) {
+	l := len(c.GetEntries(config.Global))
+    if l != len(comp.GetEntries(config.Global)) {
         t.Fatalf("TestMerge: lengths are different: %v %v", c1, comp)
     }
 }
