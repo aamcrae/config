@@ -19,3 +19,5 @@ selected sections.
 ## TODO
 * Add smarter parsing for integers etc.
 * Add validation of keywords so that unknown keywords are flagged.
+
+This is not an officially supported Google product.
