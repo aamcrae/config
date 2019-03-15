@@ -54,7 +54,7 @@ func SetDelimiters(d string) {
 
 func (c *Config) Merge(c1 *Config) {
     for s, v := range c1.sections {
-		sect := c.GetSection(s)
+		sect := c.getSection(s, true)
 		for _, e := range v.entries {
 			sect.addEntry(e)
 		}
@@ -74,11 +74,18 @@ func (c *Config) GetArg(k string) (string, error) {
 }
 
 func (config *Config) GetSection(name string) *Section {
+	return config.getSection(name, false)
+}
+
+func (config *Config) getSection(name string, create bool) *Section {
 	if name == "" {
 		name = Global
 	}
 	s, ok := config.sections[name]
 	if !ok {
+		if !create {
+			return nil
+		}
 		s = &Section{map[string][]*Entry{}, []*Entry{}}
 		config.sections[name] = s
 	}
@@ -165,7 +172,7 @@ func ParseString(s string) (*Config, error) {
 func newConfig() *Config {
 	c := new(Config)
 	c.sections = make(map[string]*Section)
-	c.GetSection(Global)
+	c.getSection(Global, true)
 	return c
 }
 
@@ -190,7 +197,7 @@ func (config *Config) parse(source string, r *bufio.Reader) error {
 		ln := len(l)
 		// Check for new section.
 		if ln > 2 && l[0] == '[' && l[ln-1] == ']' {
-			sect = config.GetSection(l[1:ln-1])
+			sect = config.getSection(l[1:ln-1], true)
 			continue
 		}
         tok := strings.FieldsFunc(l, checkDelimiter)
