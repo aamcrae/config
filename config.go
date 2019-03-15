@@ -61,6 +61,10 @@ func (c *Config) Merge(c1 *Config) {
     }
 }
 
+func (c *Config) Has(k string) bool {
+	return c.GetSection(Global).Has(k)
+}
+
 func (c *Config) Get(k string) []*Entry {
 	return c.GetSection(Global).Get(k)
 }
@@ -95,6 +99,11 @@ func (c *Config) Missing(strs []string) []string {
         }
     }
     return missing
+}
+
+func (s *Section) Has(k string) bool {
+    _, ok := s.m[k]
+	return ok
 }
 
 func (s *Section) Get(k string) []*Entry {
