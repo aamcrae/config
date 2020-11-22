@@ -186,3 +186,19 @@ func TestMerge(t *testing.T) {
 		t.Fatalf("TestMerge: lengths are different: %v %v", c1, comp)
 	}
 }
+
+func TestSection(t *testing.T) {
+	c, err := config.ParseFile(filepath.Join("testdata", "f3"))
+	if err != nil {
+		t.Fatalf("TestMerge: File read for f3 failed: %v", err)
+	}
+	// There should be 2 sections named 'section'
+	s := c.GetSections("section")
+	if len(s) != 2 {
+		t.Fatalf("section 'section' in 'f3': exp 2, got %d", len(s))
+	}
+	v := s[1].Get("key2")
+	if len(v) != 1 {
+		t.Fatalf("missing 'key1' in f3 section #2")
+	}
+}

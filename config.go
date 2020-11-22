@@ -45,7 +45,7 @@ type Section struct {
 }
 
 type Config struct {
-	sections map[string]*Section
+	sections map[string][]*Section
 }
 
 const Global = "global"
@@ -61,9 +61,11 @@ func SetDelimiters(d string) {
 
 func (c *Config) Merge(c1 *Config) {
 	for s, v := range c1.sections {
-		sect := c.getSection(s, true)
-		for _, e := range v.entries {
-			sect.addEntry(e)
+		sect := c.addSection(s)
+		for _, sl := range v {
+			for _, e := range sl.entries {
+				sect.addEntry(e)
+			}
 		}
 	}
 }
@@ -80,23 +82,40 @@ func (c *Config) GetArg(k string) (string, error) {
 	return c.GetSection(Global).GetArg(k)
 }
 
-func (config *Config) GetSection(name string) *Section {
-	return config.getSection(name, false)
+func (config *Config) GetSections(name string) []*Section {
+	return config.getSections(name)
 }
 
-func (config *Config) getSection(name string, create bool) *Section {
+// Get the first section.
+func (config *Config) GetSection(name string) *Section {
+	s := config.getSections(name)
+	if len(s) != 0 {
+		return s[0]
+	}
+	return nil
+}
+
+// getSections retrieves the named slice of sections.
+func (config *Config) getSections(name string) []*Section {
 	if name == "" {
 		name = Global
 	}
-	s, ok := config.sections[name]
-	if !ok {
-		if !create {
-			return nil
-		}
-		s = &Section{map[string][]*Entry{}, []*Entry{}}
-		config.sections[name] = s
+	return config.sections[name]
+}
+
+// addSection adds the named section. Global is treated specially, where
+// only a single Section is kept.
+func (config *Config) addSection(name string) *Section {
+	if name == "" {
+		name = Global
 	}
-	return s
+	s := config.sections[name]
+	if name == Global && len(s) == 1 {
+		return s[0]
+	}
+	sect := &Section{map[string][]*Entry{}, []*Entry{}}
+	config.sections[name] = append(s, sect)
+	return sect
 }
 
 func (c *Config) ParseFile(file string) error {
@@ -107,7 +126,7 @@ func (c *Config) ParseFile(file string) error {
 func (c *Config) Missing(strs []string) []string {
 	var missing []string
 	for _, s := range strs {
-		if _, ok := c.sections[Global].m[s]; !ok {
+		if _, ok := c.sections[Global][0].m[s]; !ok {
 			missing = append(missing, s)
 		}
 	}
@@ -177,8 +196,8 @@ func ParseString(s string) (*Config, error) {
 // newConfig creates a new Config structure.
 func newConfig() *Config {
 	c := new(Config)
-	c.sections = make(map[string]*Section)
-	c.getSection(Global, true)
+	c.sections = make(map[string][]*Section)
+	c.addSection(Global)
 	return c
 }
 
@@ -191,7 +210,7 @@ func newConfig() *Config {
 // Tokens are delimited by space, comma, tabs or '='
 // Duplicate keywords are silently overwritten.
 func (config *Config) parse(source string, r *bufio.Reader) error {
-	sect := config.sections[Global]
+	sect := config.GetSection(Global)
 	lineno := 0
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
@@ -203,7 +222,7 @@ func (config *Config) parse(source string, r *bufio.Reader) error {
 		ln := len(l)
 		// Check for new section.
 		if ln > 2 && l[0] == '[' && l[ln-1] == ']' {
-			sect = config.getSection(l[1:ln-1], true)
+			sect = config.addSection(l[1:ln-1])
 			continue
 		}
 		tok := strings.FieldsFunc(l, checkDelimiter)
