@@ -98,6 +98,14 @@ func TestFile(t *testing.T) {
 			t.Fatalf("TestFile: Wrong token %d for 'key1', expected %s, got %s", i, v, val[0].Tokens[i])
 		}
 	}
+	var d1, d2, d3, d4 int
+	n, err := c.Parse("key1", "%d,%d,%d,%d", &d1, &d2, &d3, &d4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 4 {
+		t.Fatalf("wrong scan of arguments for 'key1'")
+	}
 	s1 := c.GetSection("section1")
 	val = s1.Get("key1")
 	if len(val) != 1 {

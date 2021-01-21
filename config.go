@@ -34,6 +34,7 @@ type Entry struct {
 	Filename string
 	Lineno   int
 	Line     string
+	Args	 string		// String following keyword
 	Tokens   []string
 }
 
@@ -72,6 +73,14 @@ func (c *Config) Merge(c1 *Config) {
 
 func (c *Config) Has(k string) bool {
 	return c.GetSection(Global).Has(k)
+}
+
+func (c *Config) Parse(k string, f string, a ...interface{}) (int, error) {
+	e := c.GetSection(Global).Get(k)
+	if len(e) == 0 {
+		return 0, fmt.Errorf("%s: keyword not found", k)
+	}
+	return fmt.Sscanf(e[0].Args, f, a...)
 }
 
 func (c *Config) Get(k string) []*Entry {
@@ -136,6 +145,13 @@ func (c *Config) Missing(strs []string) []string {
 func (s *Section) Has(k string) bool {
 	_, ok := s.m[k]
 	return ok
+}
+
+func (s *Section) Parse(k string, f string, a ...interface{}) (int, error) {
+	if v, ok := s.m[k]; ok {
+		return fmt.Sscanf(v[0].Args, f, a)
+	}
+	return 0, fmt.Errorf("%s: keyword not found", k)
 }
 
 func (s *Section) Get(k string) []*Entry {
@@ -229,7 +245,14 @@ func (config *Config) parse(source string, r *bufio.Reader) error {
 		if len(tok) == 0 {
 			continue
 		}
-		sect.addEntry(&Entry{tok[0], source, lineno, l, tok[1:]})
+		var sb strings.Builder
+		for i, s := range tok[1:] {
+			if i != 0 {
+				sb.WriteRune(',')
+			}
+			sb.WriteString(s)
+		}
+		sect.addEntry(&Entry{tok[0], source, lineno, l, sb.String(), tok[1:]})
 	}
 	if scanner.Err() != nil {
 		return fmt.Errorf("%s: line %d: %v", source, lineno, scanner.Err())
