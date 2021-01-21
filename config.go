@@ -77,8 +77,8 @@ func (c *Config) Has(k string) bool {
 
 func (c *Config) Parse(k string, f string, a ...interface{}) (int, error) {
 	e := c.GetSection(Global).Get(k)
-	if len(e) == 0 {
-		return 0, fmt.Errorf("%s: keyword not found", k)
+	if len(e) != 1 {
+		return 0, fmt.Errorf("%s: invalid keyword(s)", k)
 	}
 	return fmt.Sscanf(e[0].Args, f, a...)
 }
@@ -149,6 +149,9 @@ func (s *Section) Has(k string) bool {
 
 func (s *Section) Parse(k string, f string, a ...interface{}) (int, error) {
 	if v, ok := s.m[k]; ok {
+		if len(v) != 1 {
+			return 0, fmt.Errorf("%s: invalid keyword(s)", k)
+		}
 		return fmt.Sscanf(v[0].Args, f, a)
 	}
 	return 0, fmt.Errorf("%s: keyword not found", k)
