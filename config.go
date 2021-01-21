@@ -41,6 +41,7 @@ type Entry struct {
 // The entries associated with a single section.
 // The default section is named 'global'.
 type Section struct {
+	Name string
 	m       map[string][]*Entry
 	entries []*Entry
 }
@@ -122,7 +123,7 @@ func (config *Config) addSection(name string) *Section {
 	if name == Global && len(s) == 1 {
 		return s[0]
 	}
-	sect := &Section{map[string][]*Entry{}, []*Entry{}}
+	sect := &Section{name, map[string][]*Entry{}, []*Entry{}}
 	config.sections[name] = append(s, sect)
 	return sect
 }
