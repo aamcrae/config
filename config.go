@@ -153,7 +153,7 @@ func (s *Section) Parse(k string, f string, a ...interface{}) (int, error) {
 		if len(v) != 1 {
 			return 0, fmt.Errorf("%s: invalid keyword(s)", k)
 		}
-		return fmt.Sscanf(v[0].Args, f, a)
+		return fmt.Sscanf(v[0].Args, f, a...)
 	}
 	return 0, fmt.Errorf("%s: keyword not found", k)
 }
