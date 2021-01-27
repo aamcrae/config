@@ -1,0 +1,10 @@
+#
+# Template data for parsing
+#
+key1=%d,%d[,%d,%d]
+key2=%d,%d,%d,%d
+key3=%s
+[section1]
+key1=%s,%s,%s
+key5=%d,%d,%d
++key6=%s
