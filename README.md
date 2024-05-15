@@ -1,3 +1,8 @@
+# DEPRECATED
+
+This utility is deprecated in favour of YAML based
+configuration files.
+
 # config
 Simple file based configuration for go programs.
 
